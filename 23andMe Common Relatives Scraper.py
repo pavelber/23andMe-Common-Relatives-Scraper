@@ -97,7 +97,7 @@ for relative_id, relative_name in relative_ids.items():
         try:
             max_page = int(current_page_soup.find(class_ = 'ellipses').find_next_sibling('span').get_text())
             print('{} pages of data to pull...'.format(max_page))
-        except NoSuchElementException:
+        except NoSuchElementException, AttributeError:
             print('Fewer than 5 pages, I hope this works!')
             max_page = 5
 
