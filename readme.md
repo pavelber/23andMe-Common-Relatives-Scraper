@@ -29,11 +29,20 @@ In general, it'll take several hours to run for your thousands of relatives.
 Once finished, it'll save a .csv titled 'Common Relatives per Relative.csv'
 The output data is in 6 columns as follows:
 
-Relative ID | Relative Name | Common Relative ID | Common Relative Name | Your % With Common | Their % With Common
-:-----------|:--------------|:-------------------|:---------------------|-------------------:|-------------------|
-|long hash  | John Doe      |another long hash   |Jane Doe              |               12.5%|                50%
+Relative ID | Relative Name | Your % w/ Relative | Common Relative ID | Common Relative Name | Your % With Common | Their % With Common
+:-----------|:--------------|-------------------:|:-------------------|:---------------------|-------------------:|-------------------|
+|long hash  | John Doe      | 25.0%              |another long hash   |Jane Doe              |               12.5%|                50%
 
 
 ## Visualizing your data
 
-TODO: Still working on this part -- planning to use plotly and networkx.
+Included in this repo is 'output to graphml.py', which will create a
+.graphml file for you to use with the program of your choice (like Gephi)
+You can edit the variables starting with `cutoff_` to percentages of your
+choice (where '100%' = 100.0) to change the number of nodes and edges
+that are output.
+
+ Attribute | Description | Nodes? | Edges? |
+|----------|-------------|--------|--------|
+Weight | Strength of the relationship | Relationship to you | Relationship between nodes
+Label | Description of the node | Relative's name | N/A
