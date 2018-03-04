@@ -77,7 +77,11 @@ def get_data_from_23andme(split_ids):
         print('Pulling data for {}...'.format(relative_name))
         current_page_soup = BeautifulSoup(driver.page_source, 'html.parser')
         try:
-            current_page = int(current_page_soup.find(class_ = 'current-page').get_text().strip())
+            try:
+                current_page = int(current_page_soup.find(class_ = 'current-page').get_text().strip())
+            except (NoSuchElementException, AttributeError):
+                # There's only one page of matches
+                current_page = 1
             current_page_soup.find_previous_sibling()
 
             try:
@@ -110,7 +114,6 @@ def get_data_from_23andme(split_ids):
                     except TimeoutException as ex:
                         print('Timed out loading page {} of {}, moving to next relative.'.format(current_page, max_page))
                         continue
-
 
         except NoSuchElementException as ex:
             print('Error pulling data for {}, moving to next'.format(relative_name))
