@@ -1,3 +1,4 @@
+import argparse
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -128,24 +129,41 @@ start = time()
 atexit.register(endlog)
 log('Start program')
 
-print('For this to work properly, the script needs to know how to log into your account')
-email = input('Please enter your email address: ')
-password = input('Please enter your password: ')
+parser = argparse.ArgumentParser(description='23andMe Common Relatives Scraper')
+parser.add_argument("-u", help="23andme usename (email)")
+parser.add_argument("-p", help="23andme password")
+parser.add_argument("-f", help="DNA Relatives aggregate data file path")
+args = parser.parse_args()
 
-print('You said your email was {} and your password was {}'.format(email, password))
-if input('Is this correct? (Y/n) ') != 'Y':
-    print('Sorry, please re-run the script')
-    exit()
+email = args.u
+password = args.p
+file_of_ids = args.f
 
-print('Now, we need to know where your 23andMe DNA Relatives aggregate data is saved')
-print('This csv should be unchanged from the download')
-file_of_ids = input('Please enter the full path of your DNA Relatives aggregate data, WITHOUT quotation marks: ')
+interactive = not email or not password or not file_of_ids
+
+if not email or not password:
+    print('For this to work properly, the script needs to know how to log into your account')
+if not email:
+    email = input('Please enter your email address: ')
+if not password:
+    password = input('Please enter your password: ')
+
+if not email or not password:
+    print('You said your email was {} and your password was {}'.format(email, password))
+    if input('Is this correct? (Y/n) ') != 'Y':
+        print('Sorry, please re-run the script')
+        exit()
+
+if not file_of_ids:
+    print('Now, we need to know where your 23andMe DNA Relatives aggregate data is saved')
+    print('This csv should be unchanged from the download')
+    file_of_ids = input('Please enter the full path of your DNA Relatives aggregate data, WITHOUT quotation marks: ')
 
 relative_ids = {}
 relative_relations = {}
 
 try:
-    with open(file_of_ids) as f:
+    with open(file_of_ids,encoding="utf8") as f:
         link_reader = csv.reader(f, delimiter = ',', quotechar = '"')
 
         for row in link_reader:
