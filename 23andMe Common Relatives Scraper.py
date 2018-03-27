@@ -1,4 +1,5 @@
 import argparse
+from time import sleep
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,6 +11,8 @@ from multiprocessing.dummy import Pool as ThreadPool
 import atexit
 from time import time, strftime, localtime
 from datetime import timedelta
+
+min_percent = 0
 
 def secondsToStr(elapsed=None):
     if elapsed is None:
@@ -67,6 +70,8 @@ def get_data_from_23andme(split_ids):
             password_input = driver.find_element_by_id('password')
             password_input.send_keys(password)
             password_input.submit()
+            sleep(60)
+
 
         try:
             waitingtime = WebDriverWait(driver, 30).until(
@@ -92,14 +97,19 @@ def get_data_from_23andme(split_ids):
                 print('Fewer than 5 pages, I hope this works!')
                 max_page = 5
 
-            while current_page <= max_page:
+            got_enough = False
+            while current_page <= max_page and got_enough:
                 print('Pulling {} page {} of {}'.format(relative_name, current_page, max_page))
                 relatives_table = current_page_soup.find(class_ = 'js-relatives-in-common-table')
                 for row in relatives_table.find_all('tr'):
                     if row.find('td') and row.has_attr('class') and 'loading-row' not in row.get('class'):
                         curr_common_relative = [relative_id, relative_name, relative_relations[relative_id]]
-                        curr_common_relative.extend(pull_data_from_23andme_row(row))
+                        andme_row = pull_data_from_23andme_row(row)
+                        curr_common_relative.extend(andme_row)
                         output_table.append(curr_common_relative)
+                        your_pct = andme_row[2]
+                        if float(your_pct[:-1])<min_percent:
+                            got_enough = True
                 else:
                     # time to load the next page
                     current_page = current_page + 1
@@ -133,11 +143,15 @@ parser = argparse.ArgumentParser(description='23andMe Common Relatives Scraper')
 parser.add_argument("-u", help="23andme usename (email)")
 parser.add_argument("-p", help="23andme password")
 parser.add_argument("-f", help="DNA Relatives aggregate data file path")
+parser.add_argument("-r", help="Use relatives with this minimal sharing")
 args = parser.parse_args()
 
 email = args.u
 password = args.p
 file_of_ids = args.f
+min_percent = 0
+if args.r:
+    min_percent = float(args.r)
 
 interactive = not email or not password or not file_of_ids
 
@@ -167,7 +181,7 @@ try:
         link_reader = csv.reader(f, delimiter = ',', quotechar = '"')
 
         for row in link_reader:
-            if row[0] != 'Display Name':
+            if row[0] != 'Display Name' and row[14] and float(row[14][:-1])>min_percent:
                 relative_ids[row[8][59:]] = row[0]
                 relative_relations[row[8][59:]] = row[14]
 
@@ -177,7 +191,7 @@ except FileNotFoundError as ex:
     exit()
 
 
-if input('File has {} unique IDs, continue? (Y/n) '.format(len(relative_ids))) != "Y":
+if interactive and input('File has {} unique IDs, continue? (Y/n) '.format(len(relative_ids))) != "Y":
     exit()
 
 # for arr in split(list(relative_ids.keys()), 2):
@@ -208,7 +222,7 @@ results = pool.map(get_data_from_23andme, relative_ids_split_dicts)
 print(results)
 
 print('Saving data...')
-with open("Common Relatives per Relative_from_multithreading_full data.csv", 'w', newline = '') as f:
+with open("Common Relatives per Relative_from_multithreading_full data.csv", 'w', encoding="utf-8", newline = '') as f:
     writer = csv.writer(f)
     writer.writerows(row for row in output_table if row)
 
