@@ -57,6 +57,7 @@ def pull_data_from_23andme_row(row_soup):
     return [common_relative_id, common_relative, your_pct, their_pct]
 
 def get_data_from_23andme(split_ids):
+    print(f"***** Got batch of {len(split_ids)} relatives_table")
     driver = webdriver.Firefox()
     global output_table
     for relative_id, relative_name in split_ids.items():
@@ -70,11 +71,10 @@ def get_data_from_23andme(split_ids):
             password_input = driver.find_element_by_id('password')
             password_input.send_keys(password)
             password_input.submit()
-            sleep(60)
 
 
         try:
-            waitingtime = WebDriverWait(driver, 30).until(
+            waitingtime = WebDriverWait(driver, 80).until(
                 ec.presence_of_element_located((By.CLASS_NAME, 'js-relatives-in-common-table')))
         except TimeoutException as ex:  # Page didn't open in time/load our table, let's skip it
             print('Timed out while opening {}, moving to next ID.'.format(base_url.format(relative_id)))
@@ -98,7 +98,7 @@ def get_data_from_23andme(split_ids):
                 max_page = 5
 
             got_enough = False
-            while current_page <= max_page and got_enough:
+            while current_page <= max_page and not got_enough:
                 print('Pulling {} page {} of {}'.format(relative_name, current_page, max_page))
                 relatives_table = current_page_soup.find(class_ = 'js-relatives-in-common-table')
                 for row in relatives_table.find_all('tr'):
@@ -108,7 +108,7 @@ def get_data_from_23andme(split_ids):
                         curr_common_relative.extend(andme_row)
                         output_table.append(curr_common_relative)
                         your_pct = andme_row[2]
-                        if float(your_pct[:-1])<min_percent:
+                        if float(your_pct[:-1]) < min_percent:
                             got_enough = True
                 else:
                     # time to load the next page
@@ -144,14 +144,20 @@ parser.add_argument("-u", help="23andme usename (email)")
 parser.add_argument("-p", help="23andme password")
 parser.add_argument("-f", help="DNA Relatives aggregate data file path")
 parser.add_argument("-r", help="Use relatives with this minimal sharing")
+parser.add_argument("-t", help="Number of threads")
 args = parser.parse_args()
 
 email = args.u
 password = args.p
 file_of_ids = args.f
 min_percent = 0
+num_of_threads = 4
+
 if args.r:
     min_percent = float(args.r)
+
+if args.t:
+    num_of_threads = int(args.t)
 
 interactive = not email or not password or not file_of_ids
 
@@ -197,12 +203,14 @@ if interactive and input('File has {} unique IDs, continue? (Y/n) '.format(len(r
 # for arr in split(list(relative_ids.keys()), 2):
 #     print(arr)
 
+print(f"After filtering: {len(relative_ids)} relatives to consider")
+
 relative_ids_split = split(list(relative_ids.keys()), 10)
 relative_ids_split_dicts = []
 for rel in relative_ids_split:
     relative_ids_split_dicts.append({rel_id: relative_ids[rel_id] for rel_id in rel})
 # relative_ids_split_dicts = [{rel: relative_ids[rel] for rel in relative_ids_split}]
-print(relative_ids_split_dicts)
+
 
 
 output_table = [['Relative ID',
@@ -217,7 +225,7 @@ output_table = [['Relative ID',
 base_url = r'https://you.23andme.com/url/tools:compare_match/?remote_id={}'
 
 
-pool = ThreadPool(4)
+pool = ThreadPool(num_of_threads)
 results = pool.map(get_data_from_23andme, relative_ids_split_dicts)
 print(results)
 
